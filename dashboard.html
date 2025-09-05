@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | UmojaX</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            animation: fadeIn 0.8s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        .balance-card {
+            background-color: #3182ce;
+            color: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(49, 130, 206, 0.3);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        .referral-section {
+            background-color: #e2e8f0;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .referral-link {
+            display: block;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            color: #1a202c;
+        }
+        .task-list, .withdrawal-form, .leaderboard-table {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+        .task {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            transition: background-color 0.3s ease;
+        }
+        .task:last-child {
+            border-bottom: none;
+        }
+        .task:hover {
+            background-color: #f7fafc;
+        }
+        .btn-task {
+            padding: 8px 15px;
+            background-color: #48bb78;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .btn-task:hover {
+            background-color: #38a169;
+            transform: translateY(-2px);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .btn-withdraw {
+            width: 100%;
+            padding: 15px;
+            background-color: #f6ad55;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .btn-withdraw:hover {
+            background-color: #dd6b20;
+            transform: translateY(-2px);
+        }
+        .leaderboard-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .leaderboard-table th, .leaderboard-table td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .leaderboard-table th {
+            background-color: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .toast {
+            background-color: #333;
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: slideInRight 0.5s ease-out forwards, fadeOut 3s 2s forwards;
+            min-width: 250px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(120%); }
+            to { transform: translateX(0); }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, updateDoc, collection, getDocs, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAqAEJL1OGvqd13oR1buLFsavnlib-XF3g",
+            authDomain: "v2eplatform.firebaseapp.com",
+            databaseURL: "https://v2eplatform-default-rtdb.firebaseio.com",
+            projectId: "v2eplatform",
+            storageBucket: "v2eplatform.firebasestorage.app",
+            messagingSenderId: "76863621487",
+            appId: "1:76863621487:web:dd02319afa39f6cf83009a",
+            measurementId: "G-73GVWW37P3"
+        };
+        
+        let app, auth, db, user, userDocRef;
+
+        // Function to show toast notifications
+        function showToast(message) {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+        }
+
+        // Initialize and authenticate Firebase
+        window.onload = async () => {
+            try {
+                if (Object.keys(firebaseConfig).length > 0) {
+                    app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    onAuthStateChanged(auth, async (currentUser) => {
+                        if (currentUser) {
+                            user = currentUser;
+                            userDocRef = doc(collection(db, 'artifacts', appId, 'users'), user.uid);
+                            setupListeners();
+                            document.getElementById('userIdDisplay').textContent = user.uid;
+                        } else {
+                            window.location.href = 'login.html';
+                        }
+                    });
+                } else {
+                    console.error("Firebase config is missing.");
+                }
+            } catch (error) {
+                console.error("Firebase initialization error:", error);
+            }
+        };
+
+        function setupListeners() {
+            // Listen for changes to the user's document
+            onSnapshot(userDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const userData = docSnap.data();
+                    document.getElementById('balanceDisplay').textContent = userData.balance.toFixed(2);
+                    document.getElementById('referralLink').textContent = `${window.location.origin}/register.html?ref=${user.uid}`;
+                } else {
+                    console.error("User data not found.");
+                }
+            });
+
+            // Listen for changes to tasks
+            const tasksColRef = collection(db, 'artifacts', appId, 'tasks');
+            onSnapshot(tasksColRef, (snapshot) => {
+                const tasksList = document.getElementById('tasksList');
+                tasksList.innerHTML = '';
+                if (snapshot.empty) {
+                    tasksList.innerHTML = '<p>No tasks available right now. Check back later!</p>';
+                    return;
+                }
+                snapshot.forEach(taskDoc => {
+                    const task = taskDoc.data();
+                    const taskElement = document.createElement('div');
+                    taskElement.className = 'task';
+                    taskElement.innerHTML = `
+                        <div>
+                            <strong>${task.title}</strong>
+                            <p>Reward: $${task.reward.toFixed(2)}</p>
+                        </div>
+                        <button class="btn-task" data-task-id="${taskDoc.id}" data-reward="${task.reward}">Complete</button>
+                    `;
+                    tasksList.appendChild(taskElement);
+                });
+            }, (error) => {
+                console.error("Tasks listener error:", error);
+            });
+
+            // Listen for changes to the leaderboard
+            const usersColRef = collection(db, 'artifacts', appId, 'users');
+            onSnapshot(usersColRef, (snapshot) => {
+                const users = [];
+                snapshot.forEach(doc => {
+                    users.push(doc.data());
+                });
+
+                // Sort users by balance in memory
+                users.sort((a, b) => b.balance - a.balance);
+
+                const leaderboardBody = document.getElementById('leaderboardBody');
+                leaderboardBody.innerHTML = '';
+                users.slice(0, 10).forEach((userData, index) => {
+                    const row = `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${userData.username}</td>
+                            <td>$${userData.balance.toFixed(2)}</td>
+                        </tr>
+                    `;
+                    leaderboardBody.innerHTML += row;
+                });
+            }, (error) => {
+                console.error("Leaderboard listener error:", error);
+                showToast("Failed to update leaderboard. Please check console for details.");
+            });
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await signOut(auth);
+            window.location.href = 'login.html';
+        });
+
+        document.getElementById('tasksList').addEventListener('click', async (e) => {
+            if (e.target.classList.contains('btn-task')) {
+                const taskId = e.target.dataset.taskId;
+                const reward = parseFloat(e.target.dataset.reward);
+                showToast(`Task completed! You earned $${reward.toFixed(2)}.`);
+                
+                try {
+                    await updateDoc(userDocRef, {
+                        balance: user.balance + reward
+                    });
+                } catch (error) {
+                    console.error("Failed to update balance:", error);
+                    showToast("Failed to update balance. Please try again.");
+                }
+            }
+        });
+
+        document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const amount = parseFloat(document.getElementById('withdrawAmount').value);
+            const address = document.getElementById('walletAddress').value;
+            const withdrawColRef = collection(db, 'artifacts', appId, 'withdrawals');
+
+            if (user.balance < amount) {
+                showToast("Insufficient balance.");
+                return;
+            }
+
+            try {
+                await addDoc(withdrawColRef, {
+                    userId: user.uid,
+                    username: user.username,
+                    amount: amount,
+                    address: address,
+                    status: 'pending',
+                    createdAt: new Date()
+                });
+                showToast('Withdrawal request submitted successfully!');
+            } catch (error) {
+                console.error("Failed to submit withdrawal request:", error);
+                showToast("Failed to submit withdrawal request. Please try again.");
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="toast-container" id="toast-container"></div>
+    <div class="container">
+        <header>
+            <h1>Dashboard</h1>
+            <p>Your User ID: <span id="userIdDisplay">Loading...</span></p>
+            <button id="logoutBtn">Logout</button>
+        </header>
+
+        <div class="balance-card">
+            <p>Your Balance:</p>
+            $<span id="balanceDisplay">0.00</span>
+        </div>
+
+        <div class="referral-section">
+            <h2>Refer & Earn</h2>
+            <p>Share this link to invite others and earn a bonus!</p>
+            <code id="referralLink">Loading...</code>
+        </div>
+        
+        <div class="section-title">View & Earn Tasks</div>
+        <div class="task-list" id="tasksList">
+            <p>Loading tasks...</p>
+        </div>
+
+        <div class="section-title">Withdrawals</div>
+        <div class="withdrawal-form">
+            <form id="withdrawForm">
+                <div class="form-group">
+                    <label for="withdrawAmount">Amount</label>
+                    <input type="number" id="withdrawAmount" placeholder="e.g. 50" step="0.01" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="walletAddress">Wallet Address</label>
+                    <input type="text" id="walletAddress" placeholder="Your MetaMask, Trust Wallet, etc." required>
+                </div>
+                <button type="submit" class="btn-withdraw">Request Withdrawal</button>
+            </form>
+        </div>
+
+        <div class="section-title">Leaderboard</div>
+        <div class="leaderboard-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Username</th>
+                        <th>Balance</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                    <tr><td colspan="3">Loading leaderboard...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

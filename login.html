@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | UmojaX</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .login-container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 450px;
+            box-sizing: border-box;
+            animation: fadeIn 0.8s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        h1 {
+            text-align: center;
+            color: #1a202c;
+            margin-bottom: 25px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #4299e1;
+        }
+        .btn-login {
+            width: 100%;
+            padding: 15px;
+            background-color: #3182ce;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .btn-login:hover {
+            background-color: #2c5282;
+            transform: translateY(-2px);
+        }
+        .register-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .register-link a {
+            color: #4299e1;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .toast {
+            background-color: #333;
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: slideInRight 0.5s ease-out forwards, fadeOut 3s 2s forwards;
+            min-width: 250px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(120%); }
+            to { transform: translateX(0); }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAqAEJL1OGvqd13oR1buLFsavnlib-XF3g",
+            authDomain: "v2eplatform.firebaseapp.com",
+            databaseURL: "https://v2eplatform-default-rtdb.firebaseio.com",
+            projectId: "v2eplatform",
+            storageBucket: "v2eplatform.firebasestorage.app",
+            messagingSenderId: "76863621487",
+            appId: "1:76863621487:web:dd02319afa39f6cf83009a",
+            measurementId: "G-73GVWW37P3"
+        };
+
+        let app, auth, db;
+
+        // Function to show toast notifications
+        function showToast(message) {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+        }
+
+        // Initialize and authenticate Firebase
+        window.onload = async () => {
+            if (Object.keys(firebaseConfig).length > 0) {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } else {
+                console.error("Firebase config is missing.");
+            }
+        };
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            showToast('Logging in...');
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                showToast('Login successful! Redirecting to dashboard...');
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 2000);
+            } catch (error) {
+                let errorMessage = 'Login failed. Please check your credentials.';
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                    case 'auth/wrong-password':
+                        errorMessage = 'Invalid email or password.';
+                        break;
+                    case 'auth/invalid-email':
+                        errorMessage = 'The email address is not valid.';
+                        break;
+                    default:
+                        errorMessage = 'An unknown error occurred. Please try again.';
+                        break;
+                }
+                showToast(errorMessage);
+                console.error("Login error:", error);
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="toast-container" id="toast-container"></div>
+    <div class="login-container">
+        <h1>UmojaX Login</h1>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" class="btn-login">Login</button>
+        </form>
+        <div class="register-link">
+            Don't have an account? <a href="register.html">Register here</a>
+        </div>
+    </div>
+</body>
+</html>
