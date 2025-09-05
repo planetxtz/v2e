@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | UmojaX</title>
+    <title>Login | V2E</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
@@ -109,8 +109,8 @@
     </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
         // Global variables provided by the environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -142,20 +142,35 @@
             }, 5000);
         }
 
-        // Initialize and authenticate Firebase
         window.onload = async () => {
-            if (Object.keys(firebaseConfig).length > 0) {
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
+            try {
+                if (Object.keys(firebaseConfig).length > 0) {
+                    app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
 
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
+                    onAuthStateChanged(auth, async (currentUser) => {
+                        if (currentUser) {
+                            const userDocRef = doc(collection(db, 'artifacts', appId, 'users'), currentUser.uid);
+                            const userDoc = await getDoc(userDocRef);
+                            if (userDoc.exists() && userDoc.data().role === 'admin') {
+                                window.location.href = 'admin.html';
+                            } else {
+                                window.location.href = 'dashboard.html';
+                            }
+                        }
+                    });
                 } else {
-                    await signInAnonymously(auth);
+                    console.error("Firebase config is missing.");
                 }
-            } else {
-                console.error("Firebase config is missing.");
+            } catch (error) {
+                console.error("Firebase initialization error:", error);
             }
         };
 
@@ -163,15 +178,24 @@
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            
             showToast('Logging in...');
 
             try {
-                await signInWithEmailAndPassword(auth, email, password);
-                showToast('Login successful! Redirecting to dashboard...');
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html';
-                }, 2000);
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                const userDocRef = doc(collection(db, 'artifacts', appId, 'users'), user.uid);
+                const userDoc = await getDoc(userDocRef);
+
+                if (userDoc.exists()) {
+                    showToast('Login successful! Redirecting...');
+                    if (userDoc.data().role === 'admin') {
+                        window.location.href = 'admin.html';
+                    } else {
+                        window.location.href = 'dashboard.html';
+                    }
+                } else {
+                    showToast('User data not found. Please try again.');
+                }
             } catch (error) {
                 let errorMessage = 'Login failed. Please check your credentials.';
                 switch (error.code) {
@@ -195,15 +219,15 @@
 <body>
     <div class="toast-container" id="toast-container"></div>
     <div class="login-container">
-        <h1>UmojaX Login</h1>
+        <h1>Welcome Back V2E</h1>
         <form id="loginForm">
             <div class="form-group">
                 <label for="email">Email</label>
-                <input type="email" id="email" required>
+                <input type="email" placeholder="umoja@mail.com" id="email" required>
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" required>
+                <input type="password" placeholder="*********" id="password" required>
             </div>
             <button type="submit" class="btn-login">Login</button>
         </form>

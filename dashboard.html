@@ -13,6 +13,68 @@
             margin: 0;
             padding: 20px;
         }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+        body.dark-mode .container {
+            background-color: #2d3748;
+            color: #e2e8f0;
+        }
+        body.dark-mode .balance-card {
+            background-color: #4c51bf;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(76, 81, 191, 0.3);
+        }
+        body.dark-mode .referral-section {
+            background-color: #4a5568;
+            color: #e2e8f0;
+        }
+        body.dark-mode .referral-link {
+            background-color: #2d3748;
+            color: #a0aec0;
+        }
+        body.dark-mode .section-title {
+            color: #e2e8f0;
+        }
+        body.dark-mode .task-list, body.dark-mode .withdrawal-form, body.dark-mode .leaderboard-table {
+            background-color: #2d3748;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        body.dark-mode .task {
+            border-bottom: 1px solid #4a5568;
+        }
+        body.dark-mode .task:hover {
+            background-color: #4a5568;
+        }
+        body.dark-mode .btn-task {
+            background-color: #48bb78;
+        }
+        body.dark-mode .btn-task:hover {
+            background-color: #38a169;
+        }
+        body.dark-mode .form-group input, body.dark-mode .form-group select {
+            background-color: #4a5568;
+            color: #e2e8f0;
+            border: 1px solid #4a5568;
+        }
+        body.dark-mode .btn-withdraw {
+            background-color: #f6ad55;
+        }
+        body.dark-mode .btn-withdraw:hover {
+            background-color: #dd6b20;
+        }
+        body.dark-mode .leaderboard-table th {
+            background-color: #4a5568;
+            color: #e2e8f0;
+        }
+        body.dark-mode .toast {
+            background-color: #e2e8f0;
+            color: #1a202c;
+        }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -166,6 +228,10 @@
             from { opacity: 1; }
             to { opacity: 0; }
         }
+        .dark-mode-toggle {
+            cursor: pointer;
+            font-size: 24px;
+        }
     </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
@@ -202,6 +268,26 @@
             }, 5000);
         }
 
+        // Dark/Light mode toggle function
+        function setupDarkMode() {
+            const toggle = document.getElementById('darkModeToggle');
+            const isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+            if (isDarkMode) {
+                document.body.classList.add('dark-mode');
+                toggle.textContent = '☀️';
+            } else {
+                toggle.textContent = '🌙';
+            }
+
+            toggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                const isNowDarkMode = document.body.classList.contains('dark-mode');
+                localStorage.setItem('darkMode', isNowDarkMode);
+                toggle.textContent = isNowDarkMode ? '☀️' : '🌙';
+            });
+        }
+
         // Initialize and authenticate Firebase
         window.onload = async () => {
             try {
@@ -223,9 +309,10 @@
                             setupListeners();
                             document.getElementById('userIdDisplay').textContent = user.uid;
                         } else {
-                            window.location.href = 'login.html';
+                            window.location.href = 'index.html';
                         }
                     });
+                    setupDarkMode();
                 } else {
                     console.error("Firebase config is missing.");
                 }
@@ -303,7 +390,7 @@
 
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             await signOut(auth);
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
         });
 
         document.getElementById('tasksList').addEventListener('click', async (e) => {
@@ -355,7 +442,10 @@
     <div class="toast-container" id="toast-container"></div>
     <div class="container">
         <header>
-            <h1>Dashboard</h1>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <h1>Dashboard</h1>
+                <span id="darkModeToggle" class="dark-mode-toggle">🌙</span>
+            </div>
             <p>Your User ID: <span id="userIdDisplay">Loading...</span></p>
             <button id="logoutBtn">Logout</button>
         </header>
@@ -385,7 +475,7 @@
                 </div>
                 <div class="form-group">
                     <label for="walletAddress">Wallet Address</label>
-                    <input type="text" id="walletAddress" placeholder="Your MetaMask, Trust Wallet, etc." required>
+                    <input type="text" id="walletAddress" placeholder="Your UmojaX Wallet, MetaMask, Trust Wallet, etc." required>
                 </div>
                 <button type="submit" class="btn-withdraw">Request Withdrawal</button>
             </form>

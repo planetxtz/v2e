@@ -13,6 +13,52 @@
             margin: 0;
             padding: 20px;
         }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+        body.dark-mode .container {
+            background-color: #2d3748;
+            color: #e2e8f0;
+        }
+        body.dark-mode header {
+            border-bottom: 1px solid #4a5568;
+        }
+        body.dark-mode .admin-card {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        body.dark-mode .section-title {
+            color: #e2e8f0;
+        }
+        body.dark-mode .form-group label {
+            color: #a0aec0;
+        }
+        body.dark-mode .form-group input, body.dark-mode .form-group select, body.dark-mode .admin-card textarea {
+            background-color: #4a5568;
+            color: #e2e8f0;
+            border: 1px solid #4a5568;
+        }
+        body.dark-mode .btn-primary, body.dark-mode .btn-send {
+            background-color: #4c51bf;
+        }
+        body.dark-mode .btn-primary:hover, body.dark-mode .btn-send:hover {
+            background-color: #434190;
+        }
+        body.dark-mode .btn-danger {
+            background-color: #f56565;
+        }
+        body.dark-mode .btn-danger:hover {
+            background-color: #e53e3e;
+        }
+        body.dark-mode .toast {
+            background-color: #e2e8f0;
+            color: #1a202c;
+        }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -51,22 +97,20 @@
             margin-bottom: 8px;
             font-weight: 500;
         }
-        .form-group input, .form-group select, .form-group textarea {
+        .form-group input, .form-group select, .admin-card textarea {
             width: 100%;
             padding: 10px;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
             box-sizing: border-box;
         }
-        .btn-primary, .btn-approve, .btn-reject, .btn-send {
+        .btn-primary, .btn-send, .btn-danger {
             padding: 12px 20px;
             color: #fff;
             border: none;
             border-radius: 8px;
-            font-weight: 600;
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.2s ease;
-            margin-top: 10px;
         }
         .btn-primary {
             background-color: #3182ce;
@@ -75,33 +119,28 @@
             background-color: #2c5282;
             transform: translateY(-2px);
         }
-        .btn-approve {
+        .btn-send {
             background-color: #48bb78;
         }
-        .btn-approve:hover {
-            background-color: #38a169;
-        }
-        .btn-reject {
-            background-color: #f56565;
-            margin-left: 10px;
-        }
-        .btn-reject:hover {
-            background-color: #e53e3e;
-        }
-        .btn-send {
-            background-color: #ecc94b;
-        }
         .btn-send:hover {
-            background-color: #d69e2e;
+            background-color: #38a169;
+            transform: translateY(-2px);
         }
-        .withdrawal-item {
+        .btn-danger {
+            background-color: #f56565;
+        }
+        .btn-danger:hover {
+            background-color: #e53e3e;
+            transform: translateY(-2px);
+        }
+        .pending-withdrawal {
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #e2e8f0;
         }
-        .withdrawal-item:last-child {
+        .pending-withdrawal:last-child {
             border-bottom: none;
         }
         .toast-container {
@@ -129,11 +168,15 @@
             from { opacity: 1; }
             to { opacity: 0; }
         }
+        .dark-mode-toggle {
+            cursor: pointer;
+            font-size: 24px;
+        }
     </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, addDoc, updateDoc, deleteDoc, collection, query, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, updateDoc, collection, getDocs, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
         // Global variables provided by the environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -151,7 +194,7 @@
             measurementId: "G-73GVWW37P3"
         };
         
-        let app, auth, db, user;
+        let app, auth, db, user, userDocRef;
 
         // Function to show toast notifications
         function showToast(message) {
@@ -165,6 +208,26 @@
             }, 5000);
         }
 
+        // Dark/Light mode toggle function
+        function setupDarkMode() {
+            const toggle = document.getElementById('darkModeToggle');
+            const isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+            if (isDarkMode) {
+                document.body.classList.add('dark-mode');
+                toggle.textContent = '☀️';
+            } else {
+                toggle.textContent = '🌙';
+            }
+
+            toggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                const isNowDarkMode = document.body.classList.contains('dark-mode');
+                localStorage.setItem('darkMode', isNowDarkMode);
+                toggle.textContent = isNowDarkMode ? '☀️' : '🌙';
+            });
+        }
+
         // Initialize and authenticate Firebase
         window.onload = async () => {
             try {
@@ -172,7 +235,7 @@
                     app = initializeApp(firebaseConfig);
                     auth = getAuth(app);
                     db = getFirestore(app);
-                    
+
                     if (initialAuthToken) {
                         await signInWithCustomToken(auth, initialAuthToken);
                     } else {
@@ -182,18 +245,14 @@
                     onAuthStateChanged(auth, async (currentUser) => {
                         if (currentUser) {
                             user = currentUser;
-                            const userDocRef = doc(collection(db, 'artifacts', appId, 'users'), user.uid);
-                            const docSnap = await getDoc(userDocRef);
-                            if (docSnap.exists() && docSnap.data().role === 'admin') {
-                                setupListeners();
-                            } else {
-                                showToast("Access denied. You are not an admin.");
-                                setTimeout(() => window.location.href = 'dashboard.html', 2000);
-                            }
+                            userDocRef = doc(collection(db, 'artifacts', appId, 'users'), user.uid);
+                            setupAdminPanel();
+                            document.getElementById('userIdDisplay').textContent = user.uid;
                         } else {
-                            window.location.href = 'login.html';
+                            window.location.href = 'index.html';
                         }
                     });
+                    setupDarkMode();
                 } else {
                     console.error("Firebase config is missing.");
                 }
@@ -202,54 +261,126 @@
             }
         };
 
-        function setupListeners() {
-            // Listen for changes to withdrawals
+        function setupAdminPanel() {
+            // Listen for changes to the user's document to check for admin role
+            onSnapshot(userDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const userData = docSnap.data();
+                    if (userData.role !== 'admin') {
+                        showToast("Access denied. Not an admin.");
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 2000);
+                    } else {
+                        setupWithdrawalsListener();
+                    }
+                } else {
+                    showToast("User data not found. Access denied.");
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 2000);
+                }
+            }, (error) => {
+                console.error("User listener error:", error);
+                showToast("Error checking user role.");
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+            });
+        }
+
+        function setupWithdrawalsListener() {
             const withdrawalsColRef = collection(db, 'artifacts', appId, 'withdrawals');
             onSnapshot(withdrawalsColRef, (snapshot) => {
-                const withdrawalsList = document.getElementById('withdrawalsList');
+                const withdrawalsList = document.getElementById('pendingWithdrawalsList');
                 withdrawalsList.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const withdrawal = doc.data();
-                    const withdrawalItem = document.createElement('div');
-                    withdrawalItem.className = 'withdrawal-item';
-                    withdrawalItem.innerHTML = `
+                if (snapshot.empty) {
+                    withdrawalsList.innerHTML = '<p>No pending withdrawals.</p>';
+                    return;
+                }
+                snapshot.forEach(withdrawalDoc => {
+                    const withdrawal = withdrawalDoc.data();
+                    const withdrawalElement = document.createElement('div');
+                    withdrawalElement.className = 'pending-withdrawal';
+                    withdrawalElement.innerHTML = `
                         <div>
-                            <strong>${withdrawal.username}</strong> requested $${withdrawal.amount.toFixed(2)}
-                            <p>Status: ${withdrawal.status}</p>
-                            <p>Address: ${withdrawal.address}</p>
+                            <strong>User: ${withdrawal.username}</strong><br>
+                            Amount: $${withdrawal.amount.toFixed(2)}<br>
+                            Address: ${withdrawal.address}
                         </div>
-                        <div>
-                            <button class="btn-approve" data-id="${doc.id}">Approve</button>
-                            <button class="btn-reject" data-id="${doc.id}">Reject</button>
-                        </div>
+                        <button class="btn-primary" data-withdrawal-id="${withdrawalDoc.id}" data-action="approve">Approve</button>
+                        <button class="btn-danger" data-withdrawal-id="${withdrawalDoc.id}" data-action="decline">Decline</button>
                     `;
-                    withdrawalsList.appendChild(withdrawalItem);
+                    withdrawalsList.appendChild(withdrawalElement);
                 });
-            }, (error) => {
-                console.error("Withdrawal listener error:", error);
             });
         }
 
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             await signOut(auth);
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
+        });
+
+        document.getElementById('pendingWithdrawalsList').addEventListener('click', async (e) => {
+            if (e.target.dataset.withdrawalId) {
+                const withdrawalId = e.target.dataset.withdrawalId;
+                const action = e.target.dataset.action;
+                const withdrawalDocRef = doc(db, 'artifacts', appId, 'withdrawals', withdrawalId);
+                
+                showToast(`${action.charAt(0).toUpperCase() + action.slice(1)}ing request...`);
+
+                try {
+                    await updateDoc(withdrawalDocRef, {
+                        status: action === 'approve' ? 'approved' : 'declined',
+                        processedAt: new Date()
+                    });
+                    showToast(`Withdrawal ${action}d successfully!`);
+                } catch (error) {
+                    console.error(`Failed to ${action} withdrawal:`, error);
+                    showToast(`Failed to ${action} withdrawal. Please try again.`);
+                }
+            }
+        });
+
+        document.getElementById('addTaskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('taskTitle').value;
+            const reward = parseFloat(document.getElementById('taskReward').value);
+            const tasksColRef = collection(db, 'artifacts', appId, 'tasks');
+            showToast('Adding task...');
+
+            try {
+                await addDoc(tasksColRef, {
+                    title: title,
+                    reward: reward,
+                    createdAt: new Date()
+                });
+                showToast('Task added successfully!');
+                e.target.reset();
+            } catch (error) {
+                console.error("Failed to add task:", error);
+                showToast("Failed to add task. Please try again.");
+            }
         });
 
         document.getElementById('addHalvingForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const percent = parseFloat(document.getElementById('halvingPercent').value);
+            const percent = parseInt(document.getElementById('halvingPercent').value);
             const duration = parseInt(document.getElementById('halvingDuration').value);
-            const halvingColRef = collection(db, 'artifacts', appId, 'halving');
+            const halvingDocRef = doc(db, 'artifacts', appId, 'halving');
+            showToast('Setting halving rule...');
+
             try {
-                await addDoc(halvingColRef, {
+                await setDoc(halvingDocRef, {
                     percent: percent,
-                    durationMinutes: duration,
+                    duration: duration,
                     createdAt: new Date()
                 });
-                showToast('Halving settings saved successfully!');
+                showToast('Halving rule set successfully!');
+                e.target.reset();
             } catch (error) {
-                console.error("Failed to add halving rule:", error);
-                showToast("Failed to save halving settings.");
+                console.error("Failed to set halving rule:", error);
+                showToast("Failed to set halving rule. Please try again.");
             }
         });
 
@@ -257,54 +388,24 @@
             e.preventDefault();
             const userId = document.getElementById('addCoinsUserId').value;
             const amount = parseFloat(document.getElementById('addCoinsAmount').value);
-            const userDocRef = doc(collection(db, 'artifacts', appId, 'users'), userId);
+            const userDocRef = doc(db, 'artifacts', appId, 'users', userId);
+            showToast('Sending coins...');
+
             try {
-                const docSnap = await getDoc(userDocRef);
-                if (docSnap.exists()) {
-                    const currentBalance = docSnap.data().balance;
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
                     await updateDoc(userDocRef, {
-                        balance: currentBalance + amount
+                        balance: userData.balance + amount
                     });
                     showToast('Coins sent successfully!');
                 } else {
                     showToast('User not found.');
                 }
+                e.target.reset();
             } catch (error) {
-                console.error("Failed to add coins:", error);
-                showToast("Failed to send coins.");
-            }
-        });
-
-        document.getElementById('addTaskForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const title = document.getElementById('taskTitle').value;
-            const link = document.getElementById('taskLink').value;
-            const reward = parseFloat(document.getElementById('taskReward').value);
-            const tasksColRef = collection(db, 'artifacts', appId, 'tasks');
-            try {
-                await addDoc(tasksColRef, {
-                    title: title,
-                    link: link,
-                    reward: reward,
-                    createdAt: new Date()
-                });
-                showToast('Task added successfully!');
-            } catch (error) {
-                console.error("Failed to add task:", error);
-                showToast("Failed to add task.");
-            }
-        });
-
-        document.getElementById('withdrawalsList').addEventListener('click', async (e) => {
-            const withdrawalId = e.target.dataset.id;
-            if (e.target.classList.contains('btn-approve')) {
-                const withdrawalDocRef = doc(collection(db, 'artifacts', appId, 'withdrawals'), withdrawalId);
-                await updateDoc(withdrawalDocRef, { status: 'approved' });
-                showToast('Withdrawal approved!');
-            } else if (e.target.classList.contains('btn-reject')) {
-                const withdrawalDocRef = doc(collection(db, 'artifacts', appId, 'withdrawals'), withdrawalId);
-                await updateDoc(withdrawalDocRef, { status: 'rejected' });
-                showToast('Withdrawal rejected!');
+                console.error("Failed to send coins:", error);
+                showToast("Failed to send coins. Please try again.");
             }
         });
     </script>
@@ -313,11 +414,22 @@
     <div class="toast-container" id="toast-container"></div>
     <div class="container">
         <header>
-            <h1>Admin Panel</h1>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <h1>Admin Panel</h1>
+                <span id="darkModeToggle" class="dark-mode-toggle">🌙</span>
+            </div>
+            <p>Admin ID: <span id="userIdDisplay">Loading...</span></p>
             <button id="logoutBtn">Logout</button>
         </header>
 
-        <div class="section-title">Add Tasks</div>
+        <div class="section-title">Pending Withdrawals</div>
+        <div class="admin-card">
+            <div id="pendingWithdrawalsList">
+                <p>Loading pending withdrawals...</p>
+            </div>
+        </div>
+
+        <div class="section-title">Add New Task</div>
         <div class="admin-card">
             <form id="addTaskForm">
                 <div class="form-group">
@@ -325,22 +437,11 @@
                     <input type="text" id="taskTitle" required>
                 </div>
                 <div class="form-group">
-                    <label for="taskLink">Task Link</label>
-                    <input type="url" id="taskLink" required>
-                </div>
-                <div class="form-group">
                     <label for="taskReward">Reward Amount</label>
                     <input type="number" id="taskReward" step="0.01" min="0.01" required>
                 </div>
                 <button type="submit" class="btn-primary">Add Task</button>
             </form>
-        </div>
-
-        <div class="section-title">Withdrawal Requests</div>
-        <div class="admin-card">
-            <div id="withdrawalsList">
-                <p>No pending withdrawals.</p>
-            </div>
         </div>
 
         <div class="section-title">Set Halving Rules</div>
